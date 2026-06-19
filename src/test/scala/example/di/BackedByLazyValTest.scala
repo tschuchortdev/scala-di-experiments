@@ -116,37 +116,28 @@ class BackedByLazyValTest extends FunSuite {
 
     var baseInitialized = 0
     class BaseClass extends Interface {
-      //@BackedByLazyVal
+      @BackedByLazyVal
       override def value: String = {
         baseInitialized += 1
         "hello"
       }
     }
 
-    /*var mixin1Initialized = 0
+    var mixin1Initialized = 0
     trait Mixin1 extends Interface {
       @BackedByLazyVal
       abstract override def value: String = {
         mixin1Initialized += 1
         super.value ++ " mixin1"
       }
-    }*/
-    var mixin1Initialized = 0
+    }
+    /*var mixin1Initialized = 0
     trait Mixin1 extends Interface {
       private lazy val value_lazyval: String = {
         mixin1Initialized += 1
         super.value ++ " mixin1"
       }
       abstract override def value: String = this.value_lazyval
-    }
-
-    /*var mixin2Initialized = 0
-    trait Mixin2 extends Interface {
-      @BackedByLazyVal
-      abstract override def value: String = {
-        mixin2Initialized += 1
-        super.value ++ " mixin2"
-      }
     }*/
 
     val derived = new BaseClass with Mixin1

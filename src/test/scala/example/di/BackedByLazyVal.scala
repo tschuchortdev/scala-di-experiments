@@ -28,8 +28,10 @@ class BackedByLazyVal extends MacroAnnotation {
       case d: DefDef if d.paramss.isEmpty && d.rhs.isDefined => d
       case _ => report.errorAndAbort("Annotated element must be a parameterless non-abstract def.")
 
+    val escapedParentClassName = Symbol.spliceOwner.fullName.replace('.', '_').replace("_$", "")
+
     val valDefSym = Symbol.newVal(Symbol.spliceOwner,
-      name = Symbol.freshName(s"${defDef.name}_lazyval"),
+      name = Symbol.freshName(s"${escapedParentClassName}_${defDef.name}_lazyval"),
       tpe = defDef.returnTpt.tpe,
       flags = Flags.Lazy,
       privateWithin = Symbol.spliceOwner)
