@@ -1,4 +1,4 @@
-package example.di.`implicit`
+package example.di.implicitly
 
 import scala.quoted.*
 

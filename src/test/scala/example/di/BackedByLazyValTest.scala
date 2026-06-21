@@ -109,7 +109,8 @@ class BackedByLazyValTest extends FunSuite {
     assert(derived2Initialized == 1)
   }
 
-  test("cache value when multiple mixins are overriding a trait") {
+  // See https://github.com/scala/scala3/issues/23452
+  test("cache value when a local mixin is overriding a trait") {
     trait Interface {
       def value: String
     }
