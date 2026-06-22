@@ -54,8 +54,8 @@ case class Inject[Xs <: NonEmptyTuple](val allProviders: Tuple.Map[Xs, Provider]
   }
 }
 trait InjectLowLowPriorityImplicits {
-  //given injectN: [Head, Tail <: NonEmptyTuple] =>(pl: ProviderLookup[Head], is: Inject[Tail]) => Inject[Head *: Tail] =
-    //Inject(pl.p *: is.allProviders)
+  given injectN: [Head, Tail <: NonEmptyTuple] =>(pl: ProviderLookup[Head], is: Inject[Tail]) => Inject[Head *: Tail] =
+    Inject(pl.p *: is.allProviders)
 }
 trait InjectLowPriorityImplicits extends InjectLowLowPriorityImplicits {
   // These implicits must be a lower priority than the TupleX specializations. For some reason they are similar enough
