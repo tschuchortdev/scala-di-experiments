@@ -1,5 +1,6 @@
 package example.di.implicitly
 
+import example.di.implicitly.TupleUtils.ContainsSubtype
 import munit.FunSuite
 
 import scala.compiletime.summonInline
@@ -18,20 +19,15 @@ class ImplicitDiTest extends FunSuite {
 
     val depB = provide[DepB]
     assertEquals(depB.depA.name, "DepA:local")
-  }
 
-  test("3") {
-    val depB = provide[DepB]
-    println("hello")
-    assertEquals(depB.depA.name, "DepA:companion")
+    provide[DepC]
   }
 }
 
 object ImplicitDiTest {
   class DepA(val name: String)
   object DepA {
-    inline given provider: DefaultProvider[DepA] =
-      DefaultProvider(Provider.of(DepA("DepA:companion")))
+    given provider: Provider[DepA] = Provider.of(DepA("DepA:companion"))
   }
   
   class DepB(val name: String)(using val depA: DepA)
@@ -39,12 +35,13 @@ object ImplicitDiTest {
     def apply()(using DepA): DepB = new DepB("DepB:companion")
     
     /*inline given provider: Provider[DepB] = {
-      val depA = summonInline[Provider[DepA]].get
+      val depA = summonInline[ProviderLookup[DepA]].p.get
       Provider.of(DepB()(using depA))
     }*/
 
-    inline given provider: (p1: Provider[DepA]) => Provider[DepB] =
-      Provider.of(DepB()(using p1.get))
+    given (inject: Inject[DepA *: EmptyTuple]) => Provider[DepB] = {
+      inject.into(Provider.of(DepB()))
+    }
   }
 
   /*class DepD(val name: String)(using val depA: DepA)
@@ -58,7 +55,11 @@ object ImplicitDiTest {
     }
   }*/
   
-  class DepC(val name: String)(using DepA, DepB) {
-    
-  }
+  class DepC(val name: String)(using DepA, DepB)
+  object DepC {
+    def apply()(using DepA, DepB): DepC = new DepC("DepC:companion")}
+
+    given (inject: Inject[(DepA, DepB)]) => Provider[DepC] = {
+      inject.into(Provider.of(DepC()))
+    }
 }
