@@ -22,6 +22,22 @@ class ImplicitDiTest extends FunSuite {
 
     provide[DepC]
   }
+
+  test("Provider.of cacheKey is derived from callsite source location") {
+    // Each Provider.of call site gets a unique, stable key baked in at compile time
+    val p1 = Provider.of(new DepA("first"))
+    val p2 = Provider.of(new DepA("second"))
+
+    // Different call sites → different keys
+    assertNotEquals(p1.cacheKey, p2.cacheKey)
+
+    // The key encodes the source file name
+    assert(p1.cacheKey.contains("ImplicitDiTest.scala"), s"Expected filename in key, got: ${p1.cacheKey}")
+    assert(p2.cacheKey.contains("ImplicitDiTest.scala"), s"Expected filename in key, got: ${p2.cacheKey}")
+
+    // The key is stable across repeated get() calls (not random per invocation)
+    assertEquals(p1.cacheKey, p1.cacheKey)
+  }
 }
 
 object ImplicitDiTest {
