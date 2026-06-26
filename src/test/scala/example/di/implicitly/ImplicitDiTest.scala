@@ -40,7 +40,7 @@ object ImplicitDiTest {
     }*/
 
     given (inject: Inject[DepA *: EmptyTuple]) => Provider[DepB] = {
-      inject.into(Provider.of(DepB()))
+      inject.into(DepB())
     }
   }
 
@@ -60,6 +60,6 @@ object ImplicitDiTest {
     def apply()(using DepA, DepB): DepC = new DepC("DepC:companion")}
 
     given (inject: Inject[(DepA, DepB)]) => Provider[DepC] = {
-      inject.into(Provider.of(DepC()))
+      inject.into(DepC())
     }
 }

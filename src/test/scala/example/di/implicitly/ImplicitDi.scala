@@ -10,10 +10,12 @@ import scala.util.NotGiven
 
 trait Provider[A] {
   def get: A
+  def cacheKey: String
 }
 object Provider {
   def of[A](a: => A): Provider[A] = new Provider[A] {
     override def get: A = a
+    override def cacheKey: String = "TODO"
   }
 }
 
@@ -74,16 +76,23 @@ object Inject extends InjectLowPriorityImplicits {
   // These superfluous givens with fixed arity exist mainly to make the debugging output nicer.
 
   // Implementation note: (T1, T2) is an alias for Tuple2, which is a different type from T1 *: T2 *: EmptyTuple. We need both.
-  given injectT2: [T1, T2] =>(pl1: ProviderLookup[T1], pl2: ProviderLookup[T2]) => Inject[(T1, T2)] =
+  given injectT2: [T1, T2] => (pl1: ProviderLookup[T1], pl2: ProviderLookup[T2]) => Inject[(T1, T2)] =
     Inject((pl1.p, pl2.p))
 
   given injectT3: [T1, T2, T3] => (pl1: ProviderLookup[T1], pl2: ProviderLookup[T2], pl3: ProviderLookup[T3]) => Inject[(T1, T2, T3)] =
     Inject((pl1.p, pl2.p, pl3.p))
 
+  private class ProviderFromInject[T, Deps <: NonEmptyTuple](inject: Inject[Deps], create: () => T) extends Provider[T] {
+    private val dependencyCacheKeys: Seq[String] =
+      inject.allProviders.productIterator.map(_.asInstanceOf[Provider[?]].cacheKey).toSeq
 
-  extension [T1](p: Inject[T1 *: EmptyTuple])
-    def into[R](cont: T1 ?=> R): R =
-      cont(using p.allProviders._1.get)
+    override def get: T = create()
+    override def cacheKey: String = s"${MacroUtils.unerasedTypeName[T]}(${dependencyCacheKeys.mkString(",")})"
+  }
+
+  extension [T1](i: Inject[T1 *: EmptyTuple])
+    def into[R](cont: T1 ?=> R): Provider[R] =
+      new ProviderFromInject(i, () => cont(using i.allProviders._1.get))
 
   /*extension [T1, T2](p: Inject[Tuple2[T1, T2]])
     @targetName("intoT")
@@ -92,21 +101,15 @@ object Inject extends InjectLowPriorityImplicits {
       cont(using all._1.get, all._2.get)
     }*/
 
-  extension [T1, T2](p: Inject[T1 *: T2 *: EmptyTuple])
-    def into[R](cont: (T1, T2) ?=> R): R = {
-      val all = p.allProviders
-      cont(using all._1.get, all._2.get)
-    }
+  extension [T1, T2](i: Inject[T1 *: T2 *: EmptyTuple])
+    def into[R](cont: (T1, T2) ?=> R): Provider[R] =
+      new ProviderFromInject(i, () => cont(using i.allProviders._1.get, i.allProviders._2.get))
 
-  extension [T1, T2, T3](p: Inject[(T1, T2, T3)])
-    def into[R](cont: (T1, T2, T3) ?=> R): R = {
-      val all = p.allProviders
-      cont(using all._1.get, all._2.get, all._3.get)
-    }
+  extension [T1, T2, T3](i: Inject[T1 *: T2 *: T3 *: EmptyTuple])
+    def into[R](cont: (T1, T2, T3) ?=> R): Provider[R] =
+      new ProviderFromInject(i, () => cont(using i.allProviders._1.get, i.allProviders._2.get, i.allProviders._3.get))
 
-  extension [T1, T2, T3, T4](p: Inject[(T1, T2, T3, T4)])
-    def into[R](cont: (T1, T2, T3, T4) ?=> R): R = {
-      val all = p.allProviders
-      cont(using all._1.get, all._2.get, all._3.get, all._4.get)
-    }
+  extension [T1, T2, T3, T4](i: Inject[T1 *: T2 *: T3 *: T4 *: EmptyTuple])
+    def into[R](cont: (T1, T2, T3, T4) ?=> R): Provider[R] =
+      new ProviderFromInject(i, () => cont(using i.allProviders._1.get, i.allProviders._2.get, i.allProviders._3.get, i.allProviders._4.get))
 }

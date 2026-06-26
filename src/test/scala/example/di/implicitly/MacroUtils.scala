@@ -20,4 +20,11 @@ object MacroUtils {
         report.errorAndAbort(s"Type ${t.show} is not a tuple")
   }
 
+
+  protected[implicitly] inline def unerasedTypeName[T]: String = ${ unerasedTypeNameImpl[T] }
+
+  private def unerasedTypeNameImpl[T: Type](using Quotes): Expr[String] = {
+    // Type.show returns the fully qualified name including type arguments, e.g., "com.example.Foo[java.lang.String]"
+    Expr(Type.show[T])
+  }
 }
