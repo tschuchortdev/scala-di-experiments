@@ -2,39 +2,18 @@ package example.di.implicitly
 
 import example.di.implicitly.TupleUtils.{ContainsSubtype, IndexOfSubtype}
 
-import scala.quoted.*
 import scala.annotation.targetName
-import scala.collection.immutable
 import scala.compiletime.ops.int.S
 import scala.compiletime.{constValue, summonInline}
-import scala.quoted.{Expr, Quotes, Type}
 import scala.util.NotGiven
 
 
 trait Provider[A] {
   def get: A
-  val cacheKey: String
 }
 object Provider {
-  protected[implicitly] class ProviderImpl[A](a: => A, key: String) extends Provider[A] {
+  def of[A](a: => A): Provider[A] = new Provider[A] {
     override def get: A = a
-    override val cacheKey: String = key
-  }
-  
-  inline def of[A](a: => A): Provider[A] = ${ ofImpl[A]('a) }
-
-  private def ofImpl[A: Type](a: Expr[A])(using Quotes): Expr[Provider[A]] = {
-    import quotes.reflect.*
-    val pos = Position.ofMacroExpansion
-    // Build a stable cache key from the callsite's source file path, line (1-based), and column
-    val key = s"${pos.sourceFile.path}:${pos.startLine + 1}:${pos.startColumn}"
-    '{
-      new Provider[A] {
-        override def get: A = $a
-
-        override val cacheKey: String = ${ Expr(key) }
-      }
-    }
   }
 }
 
@@ -73,8 +52,6 @@ case class Inject[Xs <: NonEmptyTuple](val allProviders: Tuple.Map[Xs, Provider]
     val index = constValue[IndexOfSubtype[Xs, T]]
     allProviders.productElement(index).asInstanceOf[Provider[T]]
   }
-
-  inline def get[T](using ContainsSubtype[Xs, T] =:= true): T = getProvider[T].get
 }
 trait InjectLowLowPriorityImplicits {
   given injectN: [Head, Tail <: NonEmptyTuple] =>(pl: ProviderLookup[Head], is: Inject[Tail]) => Inject[Head *: Tail] =
@@ -132,25 +109,4 @@ object Inject extends InjectLowPriorityImplicits {
       val all = p.allProviders
       cont(using all._1.get, all._2.get, all._3.get, all._4.get)
     }
-}
-
-class ProviderCache(private val parent: Option[ProviderCache]) extends AutoCloseable {
-  private val store = scala.collection.concurrent.TrieMap[String, Any]()
-
-  def get[T](key: String): Option[T] =
-    store.get(key).orElse(parent.flatMap(_.get(key))).asInstanceOf[Option[T]]
-
-  def getOrCreate[T](key: String)(value: => T): T = {
-    store.getOrElseUpdate(key, value).asInstanceOf[T]
-  }
-
-  override def close(): Unit = {
-    ???
-  }
-}
-object ProviderCache {
-  def apply(): ProviderCache = new ProviderCache(None)
-  def inherit(parent: ProviderCache): ProviderCache = new ProviderCache(Some(parent))
-  
-  case class CacheKey(typeName: String, instanceName: String, dependencyKeys: IArray[String])
 }
