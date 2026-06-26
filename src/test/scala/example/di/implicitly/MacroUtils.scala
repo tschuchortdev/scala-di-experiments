@@ -20,6 +20,12 @@ object MacroUtils {
         report.errorAndAbort(s"Type ${t.show} is not a tuple")
   }
 
+  protected[implicitly] inline def compilerError(inline msg: String & Singleton): Nothing = ${ compilerErrorImpl('msg) }
+
+  private def compilerErrorImpl(msg: Expr[String & Singleton])(using Quotes): Expr[Nothing] = {
+    import quotes.reflect.*
+    report.errorAndAbort(msg.valueOrAbort)
+  }
 
   protected[implicitly] inline def unerasedTypeName[T]: String = ${ unerasedTypeNameImpl[T] }
 

@@ -13,9 +13,11 @@ trait Provider[A] {
   def cacheKey: String
 }
 object Provider {
-  def of[A](a: => A): Provider[A] = new Provider[A] {
+  def of[A](a: A): Provider[A] = new Provider[A] {
     override def get: A = a
-    override def cacheKey: String = "TODO"
+
+    // TODO
+    override def cacheKey: String = s"${MacroUtils.unerasedTypeName[A]}(${System.identityHashCode(a)})"
   }
 }
 
@@ -32,7 +34,7 @@ trait ProviderLookupLowPriorityImplicits {
   given l: [A] => (p: Provider[A]) => ProviderLookup[A] = ProviderLookup(p)
 }
 object ProviderLookup extends ProviderLookupLowPriorityImplicits {
-  given ofGiven: [A] => (a: A) => ProviderLookup[A] = ProviderLookup(Provider.of(a))
+  inline given ofGiven[A](using inline a: A): ProviderLookup[A] = ProviderLookup(Provider.of(a))
 }
 
 private object TupleUtils {
@@ -49,7 +51,7 @@ private object TupleUtils {
       case _ => S[IndexOfSubtype[xst, T]]
 }
 
-case class Inject[Xs <: NonEmptyTuple](val allProviders: Tuple.Map[Xs, Provider]) {
+case class Inject[Xs <: NonEmptyTuple](allProviders: Tuple.Map[Xs, Provider]) {
   inline def getProvider[T](using ContainsSubtype[Xs, T] =:= true): Provider[T] = {
     val index = constValue[IndexOfSubtype[Xs, T]]
     allProviders.productElement(index).asInstanceOf[Provider[T]]
@@ -70,6 +72,9 @@ trait InjectLowPriorityImplicits extends InjectLowLowPriorityImplicits {
     Inject((pl1.p, pl2.p, pl3.p))
 }
 object Inject extends InjectLowPriorityImplicits {
+
+  def apply[Xs <: NonEmptyTuple](using i: Inject[Xs]): Inject[Xs] = i
+
   given inject1: [T] => (pl: ProviderLookup[T]) => Inject[T *: EmptyTuple] =
     Inject(pl.p *: EmptyTuple)
 
@@ -94,6 +99,19 @@ object Inject extends InjectLowPriorityImplicits {
     def into[R](cont: T1 ?=> R): Provider[R] =
       new ProviderFromInject(i, () => cont(using i.allProviders._1.get))
 
+  extension [T1](i: Inject[T1 *: EmptyTuple])
+    def intoCached[R](cont: T1 ?=> R)(using cache: ProviderCache): Provider[R] = {
+      val provider = new ProviderFromInject(i, () => cont(using i.allProviders._1.get))
+      cache.getOrCreate(provider.cacheKey)(provider)
+    }
+
+
+ /* extension [T1](i: Inject[Tuple1[T1]])
+    @targetName("intoT1")
+    def into[R](cont: T1 ?=> R): Provider[R] =
+      new ProviderFromInject(i.asInstanceOf[Inject[T1 *: EmptyTuple]], () => cont(using i.asInstanceOf[Inject[T1 *: EmptyTuple]].allProviders._1.get))
+  */
+
   /*extension [T1, T2](p: Inject[Tuple2[T1, T2]])
     @targetName("intoT")
     def into[R](cont: (T1, T2) ?=> R): R = {
@@ -112,4 +130,26 @@ object Inject extends InjectLowPriorityImplicits {
   extension [T1, T2, T3, T4](i: Inject[T1 *: T2 *: T3 *: T4 *: EmptyTuple])
     def into[R](cont: (T1, T2, T3, T4) ?=> R): Provider[R] =
       new ProviderFromInject(i, () => cont(using i.allProviders._1.get, i.allProviders._2.get, i.allProviders._3.get, i.allProviders._4.get))
+}
+
+class ProviderCache protected (private val parent: Option[ProviderCache]) extends AutoCloseable {
+  def this() = this(None)
+
+  private val store = scala.collection.concurrent.TrieMap[String, Any]()
+
+  def get[T](key: String): Option[T] =
+    store.get(key).orElse(parent.flatMap(_.get(key))).map(_.asInstanceOf[T])
+
+  def getOrCreate[T](key: String)(value: => T): T = {
+    store.getOrElseUpdate(key, value).asInstanceOf[T]
+  }
+
+  override def close(): Unit = {
+    ???
+  }
+}
+object ProviderCache {
+  def inherit(parent: ProviderCache): ProviderCache = new ProviderCache(Some(parent))
+
+  case class CacheKey(typeName: String, instanceName: String, dependencyKeys: IArray[String])
 }
