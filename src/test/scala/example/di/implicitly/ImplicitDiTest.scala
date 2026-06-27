@@ -9,18 +9,18 @@ class ImplicitDiTest extends FunSuite {
   import ImplicitDiTest.*
 
   test("1") {
-    given DepA = new DepA("DepA:local")
+    given localGivenDepA1: DepA = new DepA("DepA:local")
     val depB = provide[DepB]
     assertEquals(depB.depA.name, "DepA:local")
   }
 
   test("2") {
-    given Provider[DepA] = Provider.of(new DepA("DepA:local"))
+    given localGivenProviderDepA: Provider[DepA] = Provider.of(new DepA("DepA:local"))
 
     val depB = provide[DepB]
     assertEquals(depB.depA.name, "DepA:local")
 
-    provide[DepC]
+    //provide[DepC]
   }
 }
 

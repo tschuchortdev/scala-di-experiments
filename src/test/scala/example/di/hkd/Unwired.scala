@@ -1,4 +1,4 @@
-package example.di.hkd
+/*package example.di.hkd
 
 import _root_.com.tschuchort.hkd.*
 import cats.effect.IO
@@ -8,7 +8,7 @@ import cats.syntax.all.*
 
 import scala.quoted.{Expr, Type}
 
-/*type Unwired[Deps[_[_]]] = Deps[[A] =>> Deps[IO] => Resource[IO, Resource[IO, A]]]
+type Unwired[Deps[_[_]]] = Deps[[A] =>> Deps[IO] => Resource[IO, Resource[IO, A]]]
 object Unwired {
   transparent inline def apply[Deps[_[_]]]: Any = ${ applyImpl[Deps] }
   private def applyImpl[Deps[_[_]]: Type](using q: scala.quoted.Quotes): Expr[Any] = {
