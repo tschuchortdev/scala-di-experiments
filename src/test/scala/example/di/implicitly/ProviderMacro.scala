@@ -22,8 +22,8 @@ private[implicitly] object ProviderMacro {
           )
         }
 
-      case _: ImplicitSearchFailure =>
-        report.errorAndAbort(s"Cannot construct ProviderLookup.ofGiven: No given instance found for ${Type.show[A]}")
+      case isf: ImplicitSearchFailure =>
+        report.errorAndAbort(s"Cannot construct ProviderLookup.ofGiven: No given instance found for ${Type.show[A]}. Reason: ${isf.explanation}")
     }
   }
 }
