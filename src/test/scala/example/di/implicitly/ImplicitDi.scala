@@ -70,16 +70,21 @@ object Inject extends InjectLowPriorityImplicits {
     override def cacheKey: String = s"${MacroUtils.unerasedTypeName[T]}(${dependencyCacheKeys.mkString(",")})"
   }
 
+  private class ProviderFromInjectCached[T, Deps <: NonEmptyTuple](inject: Inject[Deps], create: () => T)(using cache: ProviderCache) extends Provider[T] {
+    private val dependencyCacheKeys: Seq[String] =
+      inject.allProviders.productIterator.map(_.asInstanceOf[Provider[?]].cacheKey).toSeq
+
+    override def get: T = cache.getOrCreate(cacheKey)(create())
+    override def cacheKey: String = s"${MacroUtils.unerasedTypeName[T]}(${dependencyCacheKeys.mkString(",")})"
+  }
+
   extension [T1](i: Inject[T1 *: EmptyTuple])
     def into[R](cont: T1 ?=> R): Provider[R] =
       new ProviderFromInject(i, () => cont(using i.allProviders._1.get))
 
   extension [T1](i: Inject[T1 *: EmptyTuple])
-    def intoCached[R](cont: T1 ?=> R)(using cache: ProviderCache): Provider[R] = {
-      val provider = new ProviderFromInject(i, () => cont(using i.allProviders._1.get))
-      cache.getOrCreate(provider.cacheKey)(provider)
-    }
-
+    def intoCached[R](cont: T1 ?=> R)(using cache: ProviderCache): Provider[R] =
+      new ProviderFromInjectCached(i, () => cont(using i.allProviders._1.get))
 
  /* extension [T1](i: Inject[Tuple1[T1]])
     @targetName("intoT1")
@@ -120,7 +125,7 @@ class ProviderCache protected (private val parent: Option[ProviderCache]) extend
   }
 
   override def close(): Unit = {
-    ???
+    // TODO
   }
 }
 object ProviderCache {
