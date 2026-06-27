@@ -21,24 +21,24 @@ class ImplicitDiTest extends FunSuite {
   test("Prefers local given over companion object given Provider in transitive dependency") {
     given DepA = new DepA("DepA:local")
     val depB = provide[DepB]
+    assertEquals(depB.name, "DepB:companion")
     assertEquals(depB.depA.name, "DepA:local")
   }
 
   test("Prefers local given Provider over companion object given Provider in transitive dependency") {
     given Provider[DepA] = Provider.of(new DepA("DepA:local"))
     val depB = provide[DepB]
+    assertEquals(depB.name, "DepB:companion")
     assertEquals(depB.depA.name, "DepA:local")
   }
 
   test("Provides dependency from cache") {
     given cache: ProviderCache = ProviderCache()
-    // Use intoCached so DepB is resolved and cached in the ProviderCache;
-    // the ProviderFromInject also memoises its value via lazy val.
-    given Provider[DepB] = summon[Inject[DepA *: EmptyTuple]].intoCached(DepB())
+    given Provider[DepB] = Inject[DepA *: EmptyTuple].intoCached(DepB())
 
     val depB1 = provide[DepB]
     val depB2 = provide[DepB]
-    assert(depB1 eq depB2, "Expected the same DepB instance to be returned from cache")
+    assert(depB1 eq depB2)
   }
 
   test("Provides dependency from parent cache when child cache does not have it") {
@@ -128,7 +128,7 @@ class ImplicitDiTest extends FunSuite {
   }
 
   test("Local given (compiled to def) cache key remains the same across multiple calls to provide") {
-    // A parameterised given is compiled to a def and called anew each time it is summoned,
+    // A parameterized given is compiled to a def and called anew each time it is summoned,
     // producing a different DepA value on each call. Nevertheless the macro-derived cache key
     // is the declaration name, which is stable.
     given dep(using DummyImplicit): DepA = new DepA(java.util.UUID.randomUUID().toString)

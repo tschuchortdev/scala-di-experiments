@@ -130,6 +130,4 @@ class ProviderCache protected (private val parent: Option[ProviderCache]) extend
 }
 object ProviderCache {
   def inherit(parent: ProviderCache): ProviderCache = new ProviderCache(Some(parent))
-
-  case class CacheKey(typeName: String, instanceName: String, dependencyKeys: IArray[String])
 }
