@@ -1,3 +1,4 @@
+//noinspection TypeAnnotation
 package example.di.implicitly
 
 import example.di.implicitly.TupleUtils.ContainsSubtype
@@ -50,6 +51,9 @@ class ImplicitDiTest extends FunSuite {
   test("Invalidates cached dependency when a transitive dependency's provider is replaced by local given") {
   }
 
+  test("Two local givens have different cache keys") {
+  }
+
   test("Local given (compiled to val) cache key remains the same across multiple calls to provide") {
   }
 
@@ -66,6 +70,7 @@ class ImplicitDiTest extends FunSuite {
       given newConfig: Config = provide[Config].copy(dbPassword = "newpassword")
 
       val providedConfig = provide[Config]
+      assert(providedConfig eq newConfig)
       assertEquals(providedConfig.environment, "prod")
       assertEquals(providedConfig.dbPassword, "newpassword")
     }

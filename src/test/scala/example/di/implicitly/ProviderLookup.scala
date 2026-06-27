@@ -13,5 +13,5 @@ trait ProviderLookupLowPriorityImplicits {
   given l: [A] => (p: Provider[A]) => ProviderLookup[A] = ProviderLookup(p)
 }
 object ProviderLookup extends ProviderLookupLowPriorityImplicits {
-  inline given ofGiven: [A] => (a: A) => ProviderLookup[A] = ${ ProviderMacro.ofGivenImpl[A]() }
+  inline given ofGiven: [A] => (a: A) => ProviderLookup[A] = ${ ProviderMacro.ofGivenImpl[A]('a) }
 }
