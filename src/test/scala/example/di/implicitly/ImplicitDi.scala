@@ -70,12 +70,10 @@ object Inject extends InjectLowPriorityImplicits {
     override def cacheKey: String = s"${MacroUtils.unerasedTypeName[T]}(${dependencyCacheKeys.mkString(",")})"
   }
 
-  private class ProviderFromInjectCached[T, Deps <: NonEmptyTuple](inject: Inject[Deps], create: () => T)(using cache: ProviderCache) extends Provider[T] {
-    private val dependencyCacheKeys: Seq[String] =
-      inject.allProviders.productIterator.map(_.asInstanceOf[Provider[?]].cacheKey).toSeq
+  private class ProviderFromInjectCached[T, Deps <: NonEmptyTuple](inject: Inject[Deps], create: () => T)(using cache: ProviderCache)
+      extends ProviderFromInject[T, Deps](inject, create) {
 
     override def get: T = cache.getOrCreate(cacheKey)(create())
-    override def cacheKey: String = s"${MacroUtils.unerasedTypeName[T]}(${dependencyCacheKeys.mkString(",")})"
   }
 
   extension [T1](i: Inject[T1 *: EmptyTuple])

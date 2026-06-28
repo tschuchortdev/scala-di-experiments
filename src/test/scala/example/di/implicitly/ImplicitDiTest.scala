@@ -75,12 +75,12 @@ class ImplicitDiTest extends FunSuite {
   test("Invalidates cached dependency when a transitive dependency's provider is replaced by local given Provider") {
     given cache: ProviderCache = ProviderCache()
 
-    val cacheKey1 = summon[Inject[DepA *: EmptyTuple]].intoCached(DepB()).cacheKey
+    val cacheKey1 = Inject[DepA *: EmptyTuple].intoCached(DepB()).cacheKey
 
     // The overriding given is confined to the inner block so it cannot interfere with cacheKey1 above
     val cacheKey2 = {
       given Provider[DepA] = Provider.of(new DepA("local"))
-      summon[Inject[DepA *: EmptyTuple]].intoCached(DepB()).cacheKey
+      Inject[DepA *: EmptyTuple].intoCached(DepB()).cacheKey
     }
 
     assertNotEquals(cacheKey1, cacheKey2,
@@ -90,12 +90,12 @@ class ImplicitDiTest extends FunSuite {
   test("Invalidates cached dependency when a transitive dependency's provider is replaced by local given") {
     given cache: ProviderCache = ProviderCache()
 
-    val cacheKey1 = summon[Inject[DepA *: EmptyTuple]].intoCached(DepB()).cacheKey
+    val cacheKey1 = Inject[DepA *: EmptyTuple].intoCached(DepB()).cacheKey
 
     // A direct given DepA uses its declaration name as cache key (not a UUID)
     val cacheKey2 = {
       given localDep: DepA = new DepA("local")
-      summon[Inject[DepA *: EmptyTuple]].intoCached(DepB()).cacheKey
+      Inject[DepA *: EmptyTuple].intoCached(DepB()).cacheKey
     }
 
     assertNotEquals(cacheKey1, cacheKey2,
