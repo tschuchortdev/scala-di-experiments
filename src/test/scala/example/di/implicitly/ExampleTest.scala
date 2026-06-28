@@ -27,13 +27,11 @@ class ExampleTest extends FunSuite {
 }
 object ExampleTest {
   class DepA(val name: String)
-
   object DepA {
     given provider: Provider[DepA] = Provider.of(DepA("DepA:companion"))
   }
 
   class DepB(val name: String)(using val depA: DepA)
-
   object DepB {
     def apply()(using DepA): DepB = new DepB("DepB:companion")
 
