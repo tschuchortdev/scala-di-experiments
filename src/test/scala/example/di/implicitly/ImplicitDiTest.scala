@@ -32,6 +32,27 @@ class ImplicitDiTest extends FunSuite {
     assertEquals(depB.depA.name, "DepA:local")
   }
 
+  test("Prefers local given with Inject over companion object Provider without dependencies") {
+    given (inject: Inject[Int *: EmptyTuple]) => Provider[DepA] =
+      inject.into { i ?=> DepA(s"DepA:local:$i") }
+
+    {
+      given Int = 123
+
+      assertEquals(provide[DepA].name, "DepA:local:123")
+    }
+  }
+
+  test("Prefers local given with Inject over companion object Provider with dependencies") {
+    given (inject: Inject[DepA *: EmptyTuple]) => Provider[DepB] =
+      inject.into(new DepB(s"DepB:local"))
+
+    val depB = provide[DepB]
+    assertEquals(depB.depA.name, "DepA:companion")
+    assertEquals(depB.name, "DepB:local")
+
+  }
+
   test("Provides dependency from cache") {
     given cache: ProviderCache = ProviderCache()
     given Provider[DepB] = Inject[DepA *: EmptyTuple].intoCached(DepB())
@@ -153,7 +174,7 @@ class ImplicitDiTest extends FunSuite {
       "After the local given goes out of scope, a different provider (with a different key) must be used")
   }
 
-  test("A local given can access the current provider to modify the dependency (like super.copy)") {
+  test("A local given calling provide[] can access the current provider to modify the dependency (like super.copy)") {
     given superr: Config(environment = "prod", dbPassword = "qwerty")
 
     {
@@ -166,29 +187,84 @@ class ImplicitDiTest extends FunSuite {
     }
   }
 
-
-  /*test("Imports from objects can be used to override multiple dependencies at once") {
-    class DbMixin(using ProviderLookup[Config]) {
-      given Provider[Config] = Provider.of(provide[Config].copy(dbPassword = "newpassword"))
-    }
+  test("A local given Provider calling provide[] can access the current provider to modify the dependency (like super.copy)") {
+    given superr: Config(environment = "prod", dbPassword = "qwerty")
 
     {
-      given superr: Provider[Config] = Provider.of(Config(environment = "prod", dbPassword = "qwerty"))
+      given newConfig: Provider[Config] = Provider.of(provide[Config].copy(dbPassword = "newpassword"))
 
-      {
-        val dbMixin = new DbMixin
-
-        import dbMixin.given
-
-        val providedConfig = provide[Config]
-        assertEquals(providedConfig.environment, "prod")
-        assertEquals(providedConfig.dbPassword, "newpassword")
-      }
+      val providedConfig = provide[Config]
+      assertEquals(providedConfig.environment, "prod")
+      assertEquals(providedConfig.dbPassword, "newpassword")
+      assert(provide[Config] eq provide[Config])
     }
   }
 
-  test("Multiple object imports can be chained, each accessing the previous provider to modify the dependency") {
-  }*/
+  test("2 A local given Provider calling provide[] can access the current provider to modify the dependency (like super.copy)") {
+    given superr: Provider[Config] = Provider.of(Config(environment = "prod", dbPassword = "qwerty"))
+
+    {
+      given newConfig: Provider[Config] = Provider.of(provide[Config].copy(dbPassword = "newpassword"))
+
+      val providedConfig = provide[Config]
+      assertEquals(providedConfig.environment, "prod")
+      assertEquals(providedConfig.dbPassword, "newpassword")
+      assert(provide[Config] eq provide[Config])
+    }
+  }
+
+  test("A local given using Inject[] can access the current provider to modify the dependency (like super.copy)") {
+    given superr: Config(environment = "prod", dbPassword = "qwerty")
+
+    {
+      given (inject: Inject[Config *: EmptyTuple]) => Provider[Config] =
+        inject.into { config ?=>  config.copy(dbPassword = "newpassword") }
+
+      val providedConfig = provide[Config]
+      assertEquals(providedConfig.environment, "prod")
+      assertEquals(providedConfig.dbPassword, "newpassword")
+    }
+  }
+
+  test("2 A local given using Inject[] can access the current provider to modify the dependency (like super.copy)") {
+    given superr: Provider[Config] = Provider.of(Config(environment = "prod", dbPassword = "qwerty"))
+
+    {
+      given (inject: Inject[Config *: EmptyTuple]) => Provider[Config] =
+        inject.into { config ?=> config.copy(dbPassword = "newpassword") }
+
+      val providedConfig = provide[Config]
+      assertEquals(providedConfig.environment, "prod")
+      assertEquals(providedConfig.dbPassword, "newpassword")
+      assert(provide[Config] eq provide[Config])
+    }
+  }
+
+  test("Imports from objects can be used to override multiple dependencies at once") {
+    given superr: Provider[Config] = Provider.of(Config(environment = "prod", dbPassword = "qwerty"))
+
+    class DbMixin {
+      given (inject: Inject[Config *: EmptyTuple]) => Provider[Config] =
+        inject.into { config ?=> config.copy(dbPassword = "newpassword")  }
+
+      given DepA = new DepA("DepA:mixin")
+    }
+
+    {
+      val dbMixin = new DbMixin
+      import dbMixin.given
+
+      val providedConfig = provide[Config]
+      assertEquals(providedConfig.environment, "prod")
+      assertEquals(providedConfig.dbPassword, "newpassword")
+
+      val providedDepA = provide[DepA]
+      assertEquals(providedDepA.name, "DepA:mixin")
+    }
+  }
+
+  //test("Multiple object imports can be chained, each accessing the previous provider to modify the dependency") {
+  //}
 }
 
 object ImplicitDiTest {
